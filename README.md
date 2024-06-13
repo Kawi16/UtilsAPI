@@ -9,6 +9,7 @@ TODO List:
 
   - [ ] FileManager:
     - [ ] Ottimizzare o rifare il FileManager che possiede Zap
+    - [ ] Introdurre un sistema di versioning che aggiorna il config in automatico al riavvio
 
   - [ ] Utils:
     - [ ] Creazione/Importazione di qualche metodo utile nei plugin, es. translate, getPrefix() oppure anche metodi per lavorare sulle stringhe in maniera più immediata 
