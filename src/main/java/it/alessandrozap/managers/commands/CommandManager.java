@@ -69,9 +69,9 @@ public class CommandManager implements CommandExecutor, TabCompleter {
                 return true;// O(1)
             }
             if(!sender.hasPermission(subCommand.getPermission())){// O(1)
-               if(italian) sender.sendMessage(translate(getPrefix() + "&cPermesso mancante."));// O(1)
+                if(italian) sender.sendMessage(translate(getPrefix() + "&cPermesso mancante."));// O(1)
                 else sender.sendMessage(translate(getPrefix() + "&cInsufficient permission."));
-               return true;// O(1)
+                return true;// O(1)
             }
             subCommand.execute(sender, args, label);// O(1)
             return false;
@@ -136,19 +136,17 @@ public class CommandManager implements CommandExecutor, TabCompleter {
         cmd.setTabCompleter(this);
 
         Reflections ref = new Reflections("it.alessandrozap");
-        Reflections reflections = new Reflections("com.pinco");
-
         Set<Class<? extends SubCommand>> subCommandClasses = ref.getSubTypesOf(SubCommand.class);
+
+        Reflections reflections = new Reflections("com.pinco");
         Set<Class<? extends SubCommand>> subCommandClassesPinco = reflections.getSubTypesOf(SubCommand.class);
 
-        if(!subCommandClassesPinco.isEmpty()){
-            for(Class<? extends SubCommand> subCommandClass : subCommandClassesPinco) {
-                try {
-                    SubCommand subCommand = subCommandClass.getDeclaredConstructor(CommandManager.class).newInstance(this);
-                    subCommands.put(subCommand.getName(), subCommand);
-                } catch (Exception ignored) {}
-            }
-        } else {
+        addSubCommands(subCommandClassesPinco);
+        addSubCommands(subCommandClasses);
+    }
+
+    private void addSubCommands(Set<Class<? extends SubCommand>> subCommandClasses) {
+        if(!subCommandClasses.isEmpty()) {
             for (Class<? extends SubCommand> subCommandClass : subCommandClasses) {
                 try {
                     SubCommand subCommand = subCommandClass.getDeclaredConstructor(CommandManager.class).newInstance(this);
@@ -156,10 +154,5 @@ public class CommandManager implements CommandExecutor, TabCompleter {
                 } catch (Exception ignored) {}
             }
         }
-
     }
-
-
-
-
 }
