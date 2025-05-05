@@ -1,158 +1,134 @@
 package it.alessandrozap.managers.commands;
 
-import it.alessandrozap.managers.commands.subcommands.SubCommand;
-import lombok.Getter;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.command.*;
+import it.alessandrozap.UtilsAPI;
+import it.alessandrozap.annotations.commands.Command;
+import it.alessandrozap.annotations.commands.SubCommand;
+import it.alessandrozap.defaults.DefaultMessageProvider;
+import it.alessandrozap.interfaces.MessageProvider;
+import it.alessandrozap.logger.LogType;
+import it.alessandrozap.logger.Logger;
+import lombok.Setter;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.util.StringUtil;
 import org.reflections.Reflections;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
-import static it.alessandrozap.utils.Utils.translate;
+public class CommandManager {
 
+    private final JavaPlugin plugin = UtilsAPI.getInstance().getPlugin();
+    private final Map<String, RegisteredSubCommand> subCommands = new HashMap<>();
+    @Setter
+    private MessageProvider messageProvider = new DefaultMessageProvider();
 
-@Getter
-public class CommandManager implements CommandExecutor, TabCompleter {
-    private final JavaPlugin plugin;
-    private final HashMap <String, SubCommand> subCommands = new HashMap<>();
-    private final String command, prefix, nomeHelp;
-    private final ChatColor helpColor;
-    private final boolean italian;
+    public void register(Object commandInstance) {
+        Class<?> clazz = commandInstance.getClass();
 
-    public CommandManager(JavaPlugin plugin, String command, String prefix, String nomeHelp, ChatColor helpColor, boolean italian) {
-        this.plugin = plugin;
-        this.command = command;
-        this.prefix = prefix;
-        this.nomeHelp = nomeHelp;
-        this.helpColor = helpColor;
-        this.italian = italian;
+        if (!clazz.isAnnotationPresent(Command.class)) return;
+        Command cmdInfo = clazz.getAnnotation(Command.class);
+        if(!cmdInfo.register()) return;
 
-        init();
+        CommandImpl command = new CommandImpl(cmdInfo.name(), (sender, args) -> {
+            if (!cmdInfo.permission().isEmpty() && !sender.hasPermission(cmdInfo.permission())) {
+                messageProvider.sendNoPermission(sender);
+                return true;
+            }
+
+            if (args.length == 0) {
+                messageProvider.sendUsage(sender);
+                return true;
+            }
+
+            RegisteredSubCommand sub = subCommands.get(args[0].toLowerCase());
+            if (sub == null) {
+                messageProvider.sendSubCommandNotFound(sender, args[0]);
+                return true;
+            }
+
+            if (!sub.allowConsole && !(sender instanceof Player)) {
+                messageProvider.sendPlayerOnly(sender);
+                return true;
+            }
+
+            if (!sub.permission.isEmpty() && !sender.hasPermission(sub.permission)) {
+                messageProvider.sendNoPermission(sender);
+                return true;
+            }
+
+            try {
+                if (sub.method.getParameterCount() != 2 ||
+                        !CommandSender.class.isAssignableFrom(sub.method.getParameterTypes()[0]) ||
+                        !sub.method.getParameterTypes()[1].isArray() ||
+                        !sub.method.getParameterTypes()[1].getComponentType().equals(String.class)) {
+                    throw new IllegalArgumentException("I metodi @SubCommand devono avere la firma: (CommandSender, String[]) - " + sub.getClass().getSimpleName());
+                }
+                sub.method.invoke(commandInstance, sender, Arrays.copyOfRange(args, 1, args.length));
+            } catch (Exception e) {
+                messageProvider.sendExecutionError(sender, e);
+            }
+
+            return true;
+        });
+
+        command.setAliases(Arrays.asList(cmdInfo.aliases()));
+        command.setDescription(cmdInfo.description());
+        command.setPermission(cmdInfo.permission());
+
+        for (Method method : clazz.getDeclaredMethods()) {
+            if (!method.isAnnotationPresent(SubCommand.class)) continue;
+            SubCommand sub = method.getAnnotation(SubCommand.class);
+            if(!sub.register()) continue;
+
+            RegisteredSubCommand rsc = new RegisteredSubCommand(method, sub.permission(), sub.description(), sub.allowConsole());
+            subCommands.put(sub.name().toLowerCase(), rsc);
+            for (String alias : sub.aliases()) {
+                subCommands.put(alias.toLowerCase(), rsc);
+            }
+        }
+
+        CommandRegister.registerCommand(plugin, command);
     }
 
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if(args.length == 0) {
-            String[] strings = new String[subCommands.size() + 8];
-            strings[0] = "";
-            strings[1] = translate("&7&m&l---------------------------------------------");
-            strings[2] = helpColor + translate(nomeHelp + " Help");
-            strings[3] = "";
-            if(!italian) strings[4] = translate("&r<> &7= &rRequired &7| &r[] &7= &rOptional");
-            else strings[4] = translate("&r<> &7= &rRichiesto &7| &r[] &7= &rOpzionale");
-            strings[5] = "";
+    public long registerAll(boolean outputTime) {
+        long startTime = System.currentTimeMillis();
+        int count = 0;
+        Reflections reflections = new Reflections(plugin.getClass().getPackage().getName() + ".commands");
+        Set<Class<?>> classes = reflections.getTypesAnnotatedWith(Command.class);
 
-            List<Map.Entry<String, SubCommand>> entryList = new ArrayList<>(subCommands.entrySet());
-            for(int i = 0; i < entryList.size(); i++) {
-                Map.Entry<String, SubCommand> entry = entryList.get(i);
-
-                strings[i + 6] = translate("&7* ") + helpColor + translate("/" + this.command + " " + entry.getValue().getUsage() + "&7 - " + helpColor + entry.getValue().getDescription());
+        for (Class<?> clazz : classes) {
+            try {
+                Object instance = clazz.getDeclaredConstructor().newInstance();
+                register(instance);
+                count++;
+            } catch (Exception e) {
+                Logger.log("Error during registration of " + clazz.getSimpleName(), LogType.ERROR);
+                e.printStackTrace();
             }
-
-            strings[subCommands.size() + 6] = "";
-            strings[subCommands.size() + 7] = translate("&7&m&l---------------------------------------------");
-
-            sender.sendMessage(strings);
-
-            return false;
-        }
-        if(getSubCommands().containsKey(args[0])) { // O(1)
-            SubCommand subCommand = getSubCommands().get(args[0]);// O(1) Non è necessario questo coso si può smeplicemente fare getsubcommands.getargs ma anche così va bene
-            if(!subCommand.isAllowFromConsole() && !(sender instanceof Player)){// O(1)
-                if(italian) sender.sendMessage(translate(getPrefix() + "&cIl comando può esser eseguito solo da un player."));// O(1)
-                else sender.sendMessage(translate(getPrefix() + "&cThe command is executable only from a player."));
-                return true;// O(1)
-            }
-            if(!sender.hasPermission(subCommand.getPermission())){// O(1)
-                if(italian) sender.sendMessage(translate(getPrefix() + "&cPermesso mancante."));// O(1)
-                else sender.sendMessage(translate(getPrefix() + "&cInsufficient permission."));
-                return true;// O(1)
-            }
-            subCommand.execute(sender, args, label);// O(1)
-            return false;
         }
 
-        if(italian) sender.sendMessage(
-                ChatColor.translateAlternateColorCodes(
-                        '&', getPrefix() + "&cComando inesistente."
-                )
-        );
-        else sender.sendMessage(
-                ChatColor.translateAlternateColorCodes(
-                        '&', getPrefix() + "&cUnknown command."
-                )
-        );
-        //Complessità O(1)
-
-        return true;
+        long duration = System.currentTimeMillis() - startTime;
+        if(outputTime) Logger.log("Registered " + count + " commands, duration: " + duration + " ms.", LogType.INFO);
+        else Logger.log("Registered " + count + " commands", LogType.INFO);
+        return duration;
     }
 
-    @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        List<String> result = new ArrayList<>();
+    private static class RegisteredSubCommand {
+        Method method;
+        String permission;
+        String description;
+        boolean allowConsole;
 
-        if(args.length == 0) {
-            return result;
-        }
-
-        if(args.length == 1) {
-            List<String> matchingCommands = subCommands.entrySet().stream()
-                    .filter(entry -> sender.hasPermission(entry.getValue().getPermission()))
-                    .map(Map.Entry::getKey)
-                    .filter(commandName -> commandName.startsWith(args[0]))
-                    .collect(Collectors.toList());
-
-            StringUtil.copyPartialMatches(args[0], matchingCommands, result);
-            return result;
-        }
-
-        SubCommand subCommand = subCommands.get(args[0]);
-
-        if(subCommand != null) {
-            if(!sender.hasPermission(subCommand.getPermission())) return Collections.emptyList();
-            String[] usage = subCommand.getUsage().split(" ");
-            if(usage.length >= args.length) {
-                if(usage[args.length - 1].contains("<player>")) return Bukkit.getOnlinePlayers().stream().map(Player::getName).filter(name -> name.toLowerCase().startsWith(args[args.length-1].toLowerCase())).collect(Collectors.toList());
-                String par = usage[args.length - 1]
-                        .replaceAll("<", "")
-                        .replaceAll(">", "");
-                if(par.contains("/")) result.addAll(Arrays.asList(par.split("/")));
-                else result.add(par);
-            }
-        }
-
-        return result;
-
-    }
-
-    private void init() {
-        PluginCommand cmd = plugin.getCommand(command);
-        cmd.setExecutor(this);
-        cmd.setTabCompleter(this);
-
-        Reflections ref = new Reflections("it.alessandrozap");
-        Set<Class<? extends SubCommand>> subCommandClasses = ref.getSubTypesOf(SubCommand.class);
-
-        Reflections reflections = new Reflections("com.pinco");
-        Set<Class<? extends SubCommand>> subCommandClassesPinco = reflections.getSubTypesOf(SubCommand.class);
-
-        addSubCommands(subCommandClassesPinco);
-        addSubCommands(subCommandClasses);
-    }
-
-    private void addSubCommands(Set<Class<? extends SubCommand>> subCommandClasses) {
-        if(!subCommandClasses.isEmpty()) {
-            for (Class<? extends SubCommand> subCommandClass : subCommandClasses) {
-                try {
-                    SubCommand subCommand = subCommandClass.getDeclaredConstructor(CommandManager.class).newInstance(this);
-                    subCommands.put(subCommand.getName(), subCommand);
-                } catch (Exception ignored) {}
-            }
+        public RegisteredSubCommand(Method method, String permission, String description, boolean allowConsole) {
+            this.method = method;
+            this.permission = permission;
+            this.description = description;
+            this.allowConsole = allowConsole;
         }
     }
 }
+
