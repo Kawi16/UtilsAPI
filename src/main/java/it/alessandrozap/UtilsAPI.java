@@ -3,6 +3,13 @@ package it.alessandrozap;
 import lombok.Getter;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+
 public class UtilsAPI {
 
     @Getter
@@ -13,6 +20,10 @@ public class UtilsAPI {
     private final String prefix;
     @Getter
     private boolean inizialized = false;
+    @Getter
+    private List<Class> packageClassesList = new ArrayList<>();
+    @Getter
+    private List<File> resourceList = new ArrayList<>();
 
     public UtilsAPI(JavaPlugin plugin, String prefix) throws Exception {
         if(plugin == null) throw new Exception();
@@ -24,7 +35,28 @@ public class UtilsAPI {
     }
 
     public void init() {
-        this.inizialized = true;
+        /*
+            I use this for not cycle 2 times (1 time for listeners and 1 time for commands)
+         */
+        String path = plugin.getClass().getPackage().getName().replace(".", "/") + "/";
+        try {
+            JarFile jar = new JarFile(new File(getClass().getProtectionDomain().getCodeSource().getLocation().toURI()));
+            Enumeration<JarEntry> entries = jar.entries();
+            while(entries.hasMoreElements()) {
+                JarEntry entry = entries.nextElement();
+                String name = entry.getName();
+                if(name.startsWith(path) && name.endsWith(".class")) {
+                    String className = name.replace("/", ".").replace(".class", "");
+                    try {
+                        Class<?> clazz = Class.forName(className, true, plugin.getClass().getClassLoader());
+                        packageClassesList.add(clazz);
+                    } catch(Exception ignored) {}
+                }
+            }
+            this.inizialized = true;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 }
