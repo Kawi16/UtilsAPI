@@ -5,10 +5,13 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.YamlConfiguration;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Utils {
+    private static final Map<Character, Character> SMALL_CAPS_MAP = createSmallCapsMap();
 
     public static String getMessage(YamlConfiguration file, String path) {
         return file.getString(path);
@@ -70,4 +73,54 @@ public class Utils {
             default -> "";
         };
     }
+
+    private static Map<Character, Character> createSmallCapsMap() {
+        Map<Character, Character> map = new HashMap<>();
+        map.put('a', 'ᴀ');
+        map.put('b', 'ʙ');
+        map.put('c', 'ᴄ');
+        map.put('d', 'ᴅ');
+        map.put('e', 'ᴇ');
+        map.put('f', 'ꜰ');
+        map.put('g', 'ɢ');
+        map.put('h', 'ʜ');
+        map.put('i', 'ɪ');
+        map.put('j', 'ᴊ');
+        map.put('k', 'ᴋ');
+        map.put('l', 'ʟ');
+        map.put('m', 'ᴍ');
+        map.put('n', 'ɴ');
+        map.put('o', 'ᴏ');
+        map.put('p', 'ᴘ');
+        map.put('q', 'ꞯ');
+        map.put('r', 'ʀ');
+        map.put('s', 'ꜱ');
+        map.put('t', 'ᴛ');
+        map.put('u', 'ᴜ');
+        map.put('v', 'ᴠ');
+        map.put('w', 'ᴡ');
+        map.put('x', 'x');
+        map.put('y', 'ʏ');
+        map.put('z', 'ᴢ');
+        return map;
+    }
+
+    /**
+        Convert a string in small caps font
+        @param s String to convert
+        @return Converted string (not color translated)
+     */
+    public static String toSmallCaps(String s) {
+        if (s == null) return null;
+
+        StringBuilder result = new StringBuilder();
+        for (char c : s.toCharArray()) {
+            if (SMALL_CAPS_MAP.containsKey(Character.toLowerCase(c))) {
+                char smallCap = SMALL_CAPS_MAP.get(Character.toLowerCase(c));
+                result.append(smallCap);
+            } else result.append(c);
+        }
+        return result.toString();
+    }
+
 }
