@@ -11,13 +11,11 @@ import lombok.Setter;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.reflections.Reflections;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 public class CommandManager {
 
@@ -97,10 +95,8 @@ public class CommandManager {
     public long registerAll(boolean outputTime) {
         long startTime = System.currentTimeMillis();
         int count = 0;
-        Reflections reflections = new Reflections(plugin.getClass().getPackage().getName() + ".commands");
-        Set<Class<?>> classes = reflections.getTypesAnnotatedWith(Command.class);
 
-        for (Class<?> clazz : classes) {
+        for (Class<?> clazz : UtilsAPI.getInstance().getPackageClassesList().stream().filter(c -> c.isAnnotationPresent(Command.class)).toList()) {
             try {
                 Object instance = clazz.getDeclaredConstructor().newInstance();
                 register(instance);

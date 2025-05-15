@@ -5,6 +5,7 @@ import it.alessandrozap.logger.LogType;
 import it.alessandrozap.logger.Logger;
 import org.reflections.Reflections;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import static org.bukkit.Bukkit.getServer;
@@ -14,9 +15,13 @@ public class ListenersManager {
     public long registerAll(boolean outputTime) {
         String pluginPackage = getClass().getPackage().getName();
         Reflections reflections = new Reflections(pluginPackage);
-        Set<Class<? extends ListenerImpl>> listenerClasses = reflections.getSubTypesOf(ListenerImpl.class);
+        Set<Class<? extends ListenerImpl>> listenerClasses = new HashSet<>();
         long startTime = System.currentTimeMillis();
         int countListener = 0;
+
+        for(Class<?> clazz : UtilsAPI.getInstance().getPackageClassesList()) {
+            if(ListenerImpl.class.isAssignableFrom(clazz)) listenerClasses.add(clazz.asSubclass(ListenerImpl.class));
+        }
 
         for (Class<? extends ListenerImpl> clazz : listenerClasses) {
             try {
