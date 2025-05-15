@@ -11,7 +11,7 @@ import static org.bukkit.Bukkit.getServer;
 
 public class ListenersManager {
 
-    public long register(boolean outputTime) {
+    public long registerAll(boolean outputTime) {
         String pluginPackage = getClass().getPackage().getName();
         Reflections reflections = new Reflections(pluginPackage);
         Set<Class<? extends ListenerImpl>> listenerClasses = reflections.getSubTypesOf(ListenerImpl.class);
@@ -21,10 +21,7 @@ public class ListenersManager {
         for (Class<? extends ListenerImpl> clazz : listenerClasses) {
             try {
                 ListenerImpl listener = clazz.getDeclaredConstructor().newInstance();
-                if (listener.load()) {
-                    getServer().getPluginManager().registerEvents(listener, UtilsAPI.getInstance().getPlugin());
-                    countListener++;
-                }
+                if(register(listener)) countListener++;
             } catch (Exception e) {
                 Logger.log("Error loading listener: " + clazz.getSimpleName() + ". - If you see this, open an issue on GitHub (https://github.com/Kawi16)", LogType.ERROR);
             }
@@ -34,5 +31,13 @@ public class ListenersManager {
         if(outputTime) Logger.log(countListener +  " listeners registered in " + duration + " ms.", LogType.INFO);
         else Logger.log(countListener +  " listeners registered.", LogType.INFO);
         return duration;
+    }
+
+    public boolean register(ListenerImpl listener) {
+        if (listener.load()) {
+            getServer().getPluginManager().registerEvents(listener, UtilsAPI.getInstance().getPlugin());
+            return true;
+        }
+        return false;
     }
 }
