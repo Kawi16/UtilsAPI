@@ -11,6 +11,7 @@ public @interface SubCommand {
     String name();
     String[] aliases() default {};
     String description() default "";
+    String usage() default "";
     String permission() default "";
     boolean allowConsole() default false;
     boolean register() default true;
