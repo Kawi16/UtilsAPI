@@ -8,6 +8,7 @@ public @interface Command {
     String name();
     String[] aliases() default {};
     String description() default "";
+    String usage() default "";
     String permission() default "";
     boolean register() default true;
 }
