@@ -17,6 +17,7 @@ public final class Locale {
     private static final Map<String, Locale> localeMap = new HashMap<>();
     private static FileManager messagesFile = null;
     private static boolean errorSent = false;
+    private static final String BASE_PATH = "messages.";
 
     public static Locale PREFIX;
 
@@ -32,8 +33,8 @@ public final class Locale {
         } else { localeMap.put(identifier, this); }
     }
 
-    public static long reload(boolean outputTime) {
-        Logger.log("Loading messages...", LogType.INFO);
+    public static long reload(boolean silent, boolean outputTime) {
+        if(!silent) Logger.log("Loading messages...", LogType.INFO);
         long startTime = System.currentTimeMillis();
 
         int messagesAmount = 0;
@@ -45,33 +46,45 @@ public final class Locale {
             messagesFile.setup();
 
         for (String identifier : localeMap.keySet()) {
-            List<String> listMessage = cfg.getStringList("messages." + identifier);
-            if (!listMessage.isEmpty()) localeMap.get(identifier).setMessage(translate("", listMessage));
+            List<String> listMessage = cfg.getStringList(BASE_PATH + identifier);
+            if (!listMessage.isEmpty()) localeMap.get(identifier).setMessage(translate(listMessage));
             else {
-                String rawMessage = cfg.getString("messages." + identifier, "");
-                localeMap.get(identifier).setMessage(translate("", rawMessage));
+                String rawMessage = cfg.getString(BASE_PATH + identifier, "");
+                localeMap.get(identifier).setMessage(translate(rawMessage));
             }
             //localeMap.get(identifier).setMessage(translate("", cfg.getString("messages." + identifier, "")));
             messagesAmount++;
         }
         long duration = System.currentTimeMillis() - startTime;
-        if(outputTime) Logger.log("Loaded " + messagesAmount + " messages. Duration: " + duration + " ms.", LogType.INFO);
-        else Logger.log("Loaded " + messagesAmount + " messages.", LogType.INFO);
+        if(!silent) {
+            if(outputTime) Logger.log("Loaded " + messagesAmount + " messages. Duration: " + duration + " ms.", LogType.INFO);
+            else Logger.log("Loaded " + messagesAmount + " messages.", LogType.INFO);
+        }
         return duration;
     }
 
-    public static void setup(FileManager messagesFile, String prefixPath, boolean outputTime) {
+    public static long reload(boolean silent) { return reload(silent, false); }
+    public static long reload() { return reload(false, false); }
+
+    public static void setup(FileManager messagesFile, boolean initPrefix, String prefixPath, boolean outputTime) {
         Locale.messagesFile = messagesFile;
-        PREFIX = new Locale(prefixPath);
-        reload(outputTime);
+        if(initPrefix) {
+            PREFIX = new Locale(prefixPath);
+            String rawMessage = Locale.messagesFile.getConfig().getString(BASE_PATH + prefixPath, "");
+            localeMap.get(prefixPath).setMessage(translate(rawMessage));
+            Logger.setConsolePrefix(PREFIX.getMessage(false));
+        }
     }
 
+    public static void setup(FileManager messagesFile,  boolean initPrefix, String prefixPath) {
+        setup(messagesFile, initPrefix, prefixPath, false);
+    }
     public static void setup(FileManager messagesFile, String prefixPath) {
-        setup(messagesFile, prefixPath, false);
+        setup(messagesFile, true, prefixPath, false);
     }
 
     public static void setup(FileManager messagesFile) {
-        setup(messagesFile, "prefix", false);
+        setup(messagesFile, "prefix");
     }
 
     public static void sendMessage(CommandSender sender, String message) {
@@ -122,34 +135,31 @@ public final class Locale {
         this.message = message;
     }
 
-    public static List<String> translate(String endTag, List<String> list) {
+    public static List<String> translate(List<String> list) {
         List<String> l = new ArrayList<>();
         for(String s : list) {
-            l.add(translate(endTag, s));
+            l.add(translate(s));
         }
         return l;
     }
 
-    public static String translate(String endTag, String message) {
+    public static String translate(String message) {
         final char COLOR_CHAR = ChatColor.COLOR_CHAR;
-        String startTag;
-        if (message.startsWith("&#")) startTag = "&#";
-        else return ChatColor.translateAlternateColorCodes('&', message);
-
-        final Pattern hexPattern = Pattern.compile(startTag + "([A-Fa-f0-9]{6})" + endTag);
+        final Pattern hexPattern = Pattern.compile("&#([A-Fa-f0-9]{6})");
         Matcher matcher = hexPattern.matcher(message);
-        StringBuffer buffer = new StringBuffer(message.length() + 4 * 8);
+        StringBuffer buffer = new StringBuffer();
 
         while (matcher.find()) {
-            String group = matcher.group(1);
-            matcher.appendReplacement(buffer, COLOR_CHAR + "x"
-                    + COLOR_CHAR + group.charAt(0) + COLOR_CHAR + group.charAt(1)
-                    + COLOR_CHAR + group.charAt(2) + COLOR_CHAR + group.charAt(3)
-                    + COLOR_CHAR + group.charAt(4) + COLOR_CHAR + group.charAt(5)
-            );
+            String hex = matcher.group(1);
+            StringBuilder replacement = new StringBuilder(COLOR_CHAR + "x");
+            for (char c : hex.toCharArray()) {
+                replacement.append(COLOR_CHAR).append(c);
+            }
+            matcher.appendReplacement(buffer, replacement.toString());
         }
+        matcher.appendTail(buffer);
 
-        return ChatColor.translateAlternateColorCodes('&', matcher.appendTail(buffer).toString());
+        return ChatColor.translateAlternateColorCodes('&', buffer.toString());
     }
 
 
