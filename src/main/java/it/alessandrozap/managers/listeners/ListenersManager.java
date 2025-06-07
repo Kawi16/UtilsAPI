@@ -14,7 +14,6 @@ public class ListenersManager {
 
     public long registerAll(boolean outputTime) {
         String pluginPackage = getClass().getPackage().getName();
-        Reflections reflections = new Reflections(pluginPackage);
         Set<Class<? extends ListenerImpl>> listenerClasses = new HashSet<>();
         long startTime = System.currentTimeMillis();
         int countListener = 0;
