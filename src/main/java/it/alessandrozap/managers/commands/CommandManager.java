@@ -2,11 +2,15 @@ package it.alessandrozap.managers.commands;
 
 import it.alessandrozap.UtilsAPI;
 import it.alessandrozap.annotations.commands.Command;
+import it.alessandrozap.annotations.commands.MainCommand;
 import it.alessandrozap.annotations.commands.SubCommand;
 import it.alessandrozap.defaults.DefaultMessageProvider;
 import it.alessandrozap.interfaces.MessageProvider;
 import it.alessandrozap.logger.LogType;
 import it.alessandrozap.logger.Logger;
+import it.alessandrozap.managers.messages.Locale;
+import it.alessandrozap.utils.Utility;
+import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -18,10 +22,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class CommandManager {
-
+    private final Map<Object, Method> defaultCommandMethods = new HashMap<>();
     private final JavaPlugin plugin = UtilsAPI.getInstance().getPlugin();
     private final Map<String, RegisteredSubCommand> subCommands = new HashMap<>();
-    @Setter
+    @Getter @Setter
     private MessageProvider messageProvider = new DefaultMessageProvider();
 
     public void register(Object commandInstance) {
@@ -38,7 +42,25 @@ public class CommandManager {
             }
 
             if (args.length == 0) {
-                messageProvider.sendUsage(sender);
+                Method defaultMethod = defaultCommandMethods.get(commandInstance);
+                if (defaultMethod != null) {
+                    try {
+                        if (defaultMethod.getParameterCount() != 1 ||
+                                !CommandSender.class.isAssignableFrom(defaultMethod.getParameterTypes()[0])) {
+                            throw new IllegalArgumentException("Default method must have signature: (CommandSender)");
+                        }
+                        MainCommand mainCommand = defaultMethod.getAnnotation(MainCommand.class);
+                        if (mainCommand != null && !mainCommand.allowConsole() && !(sender instanceof Player)) {
+                            messageProvider.sendPlayerOnly(sender);
+                            return true;
+                        }
+                        defaultMethod.invoke(commandInstance, sender);
+                    } catch (Exception e) {
+                        messageProvider.sendUsage(sender, Locale.translate(Utility.toSmallCaps(cmdInfo.usage())));
+                        e.printStackTrace();
+                    }
+                    return true;
+                }
                 return true;
             }
 
@@ -77,16 +99,25 @@ public class CommandManager {
         command.setDescription(cmdInfo.description());
         command.setPermission(cmdInfo.permission());
 
-        for (Method method : clazz.getDeclaredMethods()) {
-            if (!method.isAnnotationPresent(SubCommand.class)) continue;
-            SubCommand sub = method.getAnnotation(SubCommand.class);
-            if(!sub.register()) continue;
+        Method defaultMethod = null;
 
-            RegisteredSubCommand rsc = new RegisteredSubCommand(method, sub.permission(), sub.description(), sub.allowConsole());
-            subCommands.put(sub.name().toLowerCase(), rsc);
-            for (String alias : sub.aliases()) {
-                subCommands.put(alias.toLowerCase(), rsc);
+        for (Method method : clazz.getDeclaredMethods()) {
+            if (method.isAnnotationPresent(SubCommand.class)) {
+                SubCommand sub = method.getAnnotation(SubCommand.class);
+                if (!sub.register()) continue;
+
+                RegisteredSubCommand rsc = new RegisteredSubCommand(method, sub.permission(), sub.description(), sub.allowConsole());
+                subCommands.put(sub.name().toLowerCase(), rsc);
+                for (String alias : sub.aliases()) {
+                    subCommands.put(alias.toLowerCase(), rsc);
+                }
+            } else if (method.isAnnotationPresent(MainCommand.class)) {
+                defaultMethod = method;
             }
+        }
+
+        if (defaultMethod != null) {
+            defaultCommandMethods.put(commandInstance, defaultMethod);
         }
 
         CommandRegister.registerCommand(plugin, command);
