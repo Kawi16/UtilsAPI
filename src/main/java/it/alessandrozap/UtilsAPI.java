@@ -1,5 +1,7 @@
 package it.alessandrozap;
 
+import it.alessandrozap.managers.commands.CommandManager;
+import it.alessandrozap.managers.listeners.ListenersManager;
 import lombok.Getter;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -14,6 +16,10 @@ public class UtilsAPI {
 
     @Getter
     private static UtilsAPI instance;
+    @Getter
+    private ListenersManager listenersManager;
+    @Getter
+    private CommandManager commandManager;
     @Getter
     private final JavaPlugin plugin;
     @Getter
@@ -53,6 +59,8 @@ public class UtilsAPI {
                     } catch(Exception ignored) {}
                 }
             }
+            listenersManager = new ListenersManager();
+            commandManager = new CommandManager();
             this.inizialized = true;
         } catch (Exception e) {
             e.printStackTrace();
