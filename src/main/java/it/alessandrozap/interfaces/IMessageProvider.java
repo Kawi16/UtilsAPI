@@ -2,7 +2,7 @@ package it.alessandrozap.interfaces;
 
 import org.bukkit.command.CommandSender;
 
-public interface MessageProvider {
+public interface IMessageProvider {
     void sendNoPermission(CommandSender sender);
     void sendSubCommandNotFound(CommandSender sender, String input);
     void sendPlayerOnly(CommandSender sender);

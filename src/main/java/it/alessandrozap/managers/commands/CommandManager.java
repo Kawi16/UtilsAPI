@@ -5,7 +5,7 @@ import it.alessandrozap.annotations.commands.Command;
 import it.alessandrozap.annotations.commands.MainCommand;
 import it.alessandrozap.annotations.commands.SubCommand;
 import it.alessandrozap.defaults.DefaultMessageProvider;
-import it.alessandrozap.interfaces.MessageProvider;
+import it.alessandrozap.interfaces.IMessageProvider;
 import it.alessandrozap.logger.LogType;
 import it.alessandrozap.logger.Logger;
 import it.alessandrozap.managers.messages.Locale;
@@ -26,7 +26,7 @@ public class CommandManager {
     private final JavaPlugin plugin = UtilsAPI.getInstance().getPlugin();
     private final Map<String, RegisteredSubCommand> subCommands = new HashMap<>();
     @Getter @Setter
-    private MessageProvider messageProvider = new DefaultMessageProvider();
+    private IMessageProvider messageProvider = new DefaultMessageProvider();
 
     public void register(Object commandInstance) {
         Class<?> clazz = commandInstance.getClass();

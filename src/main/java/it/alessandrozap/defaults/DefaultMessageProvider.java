@@ -1,10 +1,10 @@
 package it.alessandrozap.defaults;
 
-import it.alessandrozap.interfaces.MessageProvider;
+import it.alessandrozap.interfaces.IMessageProvider;
 import it.alessandrozap.managers.messages.Locale;
 import org.bukkit.command.CommandSender;
 
-public class DefaultMessageProvider implements MessageProvider {
+public class DefaultMessageProvider implements IMessageProvider {
 
     @Override
     public void sendNoPermission(CommandSender sender) {
