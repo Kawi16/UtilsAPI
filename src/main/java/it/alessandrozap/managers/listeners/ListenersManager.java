@@ -3,7 +3,7 @@ package it.alessandrozap.managers.listeners;
 import it.alessandrozap.UtilsAPI;
 import it.alessandrozap.logger.LogType;
 import it.alessandrozap.logger.Logger;
-import org.reflections.Reflections;
+import org.bukkit.event.HandlerList;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -43,5 +43,9 @@ public class ListenersManager {
             return true;
         }
         return false;
+    }
+
+    public void unregisterAll() {
+        HandlerList.unregisterAll(UtilsAPI.getInstance().getPlugin());
     }
 }
