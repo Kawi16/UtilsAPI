@@ -17,9 +17,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class CommandManager {
     private final Map<Object, Method> defaultCommandMethods = new HashMap<>();
@@ -142,6 +140,12 @@ public class CommandManager {
         if(outputTime) Logger.log("Registered " + count + " commands, duration: " + duration + " ms.", LogType.INFO);
         else Logger.log("Registered " + count + " commands", LogType.INFO);
         return duration;
+    }
+
+    public void reset() {
+        CommandRegister.unregisterAll();
+        subCommands.clear();
+        defaultCommandMethods.clear();
     }
 
     private static class RegisteredSubCommand {
