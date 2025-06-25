@@ -3,6 +3,7 @@ package it.alessandrozap;
 import it.alessandrozap.managers.commands.CommandManager;
 import it.alessandrozap.managers.listeners.ListenersManager;
 import lombok.Getter;
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -65,6 +66,16 @@ public class UtilsAPI {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public void shutdown() {
+        if(listenersManager != null) listenersManager.unregisterAll();
+        Bukkit.getScheduler().cancelTasks(plugin);
+        if(commandManager != null) commandManager.reset();
+        packageClassesList.clear();
+        resourceList.clear();
+        UtilsAPI.instance = null;
+        inizialized = false;
     }
 
 }
