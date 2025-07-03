@@ -131,6 +131,10 @@ public final class Locale {
             sender.sendMessage(message);
     }
 
+    public Object get() {
+        return message;
+    }
+
     private void setMessage(Object message) {
         this.message = message;
     }
