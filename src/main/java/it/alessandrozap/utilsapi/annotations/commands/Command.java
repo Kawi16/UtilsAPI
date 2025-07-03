@@ -11,4 +11,5 @@ public @interface Command {
     String usage() default "";
     String permission() default "";
     boolean register() default true;
+    String[] dependencies() default {};
 }

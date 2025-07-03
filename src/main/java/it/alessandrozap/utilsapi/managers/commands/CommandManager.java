@@ -12,6 +12,7 @@ import it.alessandrozap.utilsapi.managers.messages.Locale;
 import it.alessandrozap.utilsapi.utils.Utility;
 import lombok.Getter;
 import lombok.Setter;
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -32,6 +33,7 @@ public class CommandManager {
         if (!clazz.isAnnotationPresent(Command.class)) return;
         Command cmdInfo = clazz.getAnnotation(Command.class);
         if(!cmdInfo.register()) return;
+        for(String s : cmdInfo.dependencies()) if(Bukkit.getPluginManager().getPlugin(s) == null) return;
 
         CommandImpl command = new CommandImpl(cmdInfo.name(), (sender, args) -> {
             if (!cmdInfo.permission().isEmpty() && !sender.hasPermission(cmdInfo.permission())) {
