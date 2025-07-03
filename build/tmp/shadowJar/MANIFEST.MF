@@ -1,4 +1,0 @@
-Manifest-Version: 1.0
-Class-Path: reflections-0.10.2.jar javassist-3.28.0-GA.jar jsr305-3.0.
- 2.jar slf4j-api-1.7.32.jar
-
