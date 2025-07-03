@@ -26,7 +26,7 @@ public class UtilsAPI {
     @Getter
     private final String prefix;
     @Getter
-    private boolean inizialized = false;
+    private boolean initialized = false;
     @Getter
     private List<Class> packageClassesList = new ArrayList<>();
     @Getter
@@ -62,7 +62,7 @@ public class UtilsAPI {
             }
             listenersManager = new ListenersManager();
             commandManager = new CommandManager();
-            this.inizialized = true;
+            this.initialized = true;
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -75,7 +75,7 @@ public class UtilsAPI {
         packageClassesList.clear();
         resourceList.clear();
         UtilsAPI.instance = null;
-        inizialized = false;
+        initialized = false;
     }
 
 }
