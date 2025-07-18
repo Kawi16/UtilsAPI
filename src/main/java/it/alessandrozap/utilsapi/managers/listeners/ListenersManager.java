@@ -3,6 +3,7 @@ package it.alessandrozap.utilsapi.managers.listeners;
 import it.alessandrozap.utilsapi.UtilsAPI;
 import it.alessandrozap.utilsapi.logger.LogType;
 import it.alessandrozap.utilsapi.logger.Logger;
+import org.bukkit.Bukkit;
 import org.bukkit.event.HandlerList;
 
 import java.util.HashSet;
@@ -23,11 +24,13 @@ public class ListenersManager {
         }
 
         for (Class<? extends ListenerImpl> clazz : listenerClasses) {
+            if (clazz.equals(ListenerImpl.class)) continue;
             try {
                 ListenerImpl listener = clazz.getDeclaredConstructor().newInstance();
                 if(register(listener)) countListener++;
             } catch (Exception e) {
-                Logger.log("Error loading listener: " + clazz.getSimpleName() + ". - If you see this, open an issue on GitHub (https://github.com/Kawi16)", LogType.ERROR);
+                Logger.log("Error loading listener: " + clazz.getSimpleName() + " - If you see this, open an issue on GitHub (https://github.com/Kawi16)", LogType.ERROR);
+                e.printStackTrace();
             }
         }
 
@@ -39,6 +42,10 @@ public class ListenersManager {
 
     public boolean register(ListenerImpl listener) {
         if (listener.load()) {
+            boolean allDependenciesLoaded = true;
+            for(int i = 0; i < listener.dependencies().length && allDependenciesLoaded; i++) {
+                if(Bukkit.getPluginManager().getPlugin(listener.dependencies()[i]) == null) allDependenciesLoaded = false;
+            }
             getServer().getPluginManager().registerEvents(listener, UtilsAPI.getInstance().getPlugin());
             return true;
         }
