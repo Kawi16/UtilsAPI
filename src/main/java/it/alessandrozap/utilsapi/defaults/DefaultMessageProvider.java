@@ -3,8 +3,41 @@ package it.alessandrozap.utilsapi.defaults;
 import it.alessandrozap.utilsapi.interfaces.IMessageProvider;
 import it.alessandrozap.utilsapi.managers.messages.Locale;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.ConsoleCommandSender;
+import org.bukkit.entity.Player;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class DefaultMessageProvider implements IMessageProvider {
+
+    @Override
+    public List<String> formatSubCommandHelp(CommandSender sender, String mainCommandName, String subCommandName, String usage, String description, String permission, String[] aliases) {
+        List<String> list = new ArrayList<>();
+        list.add(String.format("&#929B92• &f/%s &#929B92- %s", usage != null && !usage.isEmpty() ? usage : (mainCommandName + " " + subCommandName), description));
+        if(permission != null && !permission.isEmpty()) list.add("  &#929B92" + ((sender instanceof Player) ? "ᴘᴇʀᴍᴇꜱꜱᴏ: " : "Permesso: ") + permission);
+        if(aliases != null && aliases.length > 0) {
+            list.add("  &#929B92" + ((sender instanceof Player) ? "ᴀʟɪᴀꜱᴇꜱ: " : "Aliases: "));
+            for(String alias : aliases) {
+                list.add(String.format("    &#929B92• &f/%s %s", mainCommandName, alias));
+            }
+        }
+        return Locale.translate(list);
+    }
+
+    @Override
+    public List<String> formatMainCommandHelp(CommandSender sender, String name, String description, String permission, String[] aliases) {
+        List<String> list = new ArrayList<>();
+        list.add(String.format("&#929B92• &f/%s &#929B92- %s", name, description));
+        if(permission != null && !permission.isEmpty()) list.add("  &#929B92" + ((sender instanceof Player) ? "ᴘᴇʀᴍᴇꜱꜱᴏ: " : "Permesso: ") + permission);
+        if(aliases != null && aliases.length > 0) {
+            list.add("  &#929B92" + ((sender instanceof Player) ? "ᴀʟɪᴀꜱᴇꜱ: " : "Aliases: "));
+            for(String alias : aliases) {
+                list.add(String.format("    &#929B92• &f/%s", alias));
+            }
+        }
+        return Locale.translate(list);
+    }
 
     @Override
     public void sendNoPermission(CommandSender sender) {
