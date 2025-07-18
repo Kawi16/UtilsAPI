@@ -27,18 +27,18 @@ public class CommandManager {
     @Getter @Setter
     private IMessageProvider messageProvider = new DefaultMessageProvider();
 
-    public void register(Object commandInstance) {
+    public boolean register(Object commandInstance) {
         Class<?> clazz = commandInstance.getClass();
 
-        if (!clazz.isAnnotationPresent(Command.class)) return;
+        if (!clazz.isAnnotationPresent(Command.class)) return false;
         Command cmdInfo = clazz.getAnnotation(Command.class);
-        if(!cmdInfo.register()) return;
-        for(String s : cmdInfo.dependencies()) if(Bukkit.getPluginManager().getPlugin(s) == null) return;
+        if(!cmdInfo.register()) return false;
+        for(String s : cmdInfo.dependencies()) if(Bukkit.getPluginManager().getPlugin(s) == null) return false;
 
         CommandImpl command = new CommandImpl(cmdInfo.name(), (sender, args) -> {
             if (!cmdInfo.permission().isEmpty() && !sender.hasPermission(cmdInfo.permission())) {
                 messageProvider.sendNoPermission(sender);
-                return true;
+                return false;
             }
 
             if (args.length == 0) {
@@ -52,32 +52,32 @@ public class CommandManager {
                         MainCommand mainCommand = defaultMethod.getAnnotation(MainCommand.class);
                         if (mainCommand != null && !mainCommand.allowConsole() && !(sender instanceof Player)) {
                             messageProvider.sendPlayerOnly(sender);
-                            return true;
+                            return false;
                         }
                         defaultMethod.invoke(commandInstance, sender);
                     } catch (Exception e) {
                         messageProvider.sendUsage(sender, Locale.translate(Utility.toSmallCaps(cmdInfo.usage())));
                         e.printStackTrace();
                     }
-                    return true;
+                    return false;
                 }
-                return true;
+                return false;
             }
 
             RegisteredSubCommand sub = subCommands.get(args[0].toLowerCase());
             if (sub == null) {
                 messageProvider.sendSubCommandNotFound(sender, args[0]);
-                return true;
+                return false;
             }
 
             if (!sub.allowConsole && !(sender instanceof Player)) {
                 messageProvider.sendPlayerOnly(sender);
-                return true;
+                return false;
             }
 
             if (!sub.permission.isEmpty() && !sender.hasPermission(sub.permission)) {
                 messageProvider.sendNoPermission(sender);
-                return true;
+                return false;
             }
 
             try {
@@ -92,7 +92,7 @@ public class CommandManager {
                 messageProvider.sendExecutionError(sender, e);
             }
 
-            return true;
+            return false;
         });
 
         command.setAliases(Arrays.asList(cmdInfo.aliases()));
@@ -105,8 +105,7 @@ public class CommandManager {
             if (method.isAnnotationPresent(SubCommand.class)) {
                 SubCommand sub = method.getAnnotation(SubCommand.class);
                 if (!sub.register()) continue;
-
-                RegisteredSubCommand rsc = new RegisteredSubCommand(method, sub.permission(), sub.description(), sub.allowConsole());
+                RegisteredSubCommand rsc = new RegisteredSubCommand(method, sub.usage(), sub.permission(), sub.description(), sub.aliases(), sub.allowConsole());
                 subCommands.put(sub.name().toLowerCase(), rsc);
                 for (String alias : sub.aliases()) {
                     subCommands.put(alias.toLowerCase(), rsc);
@@ -121,17 +120,20 @@ public class CommandManager {
         }
 
         CommandRegister.registerCommand(plugin, command);
+        return true;
     }
 
     public long registerAll(boolean outputTime) {
         long startTime = System.currentTimeMillis();
         int count = 0;
 
+        HashSet<Class<?>> classes = new HashSet<>(); //TODO: Da migliorare come fix
         for (Class<?> clazz : UtilsAPI.getInstance().getPackageClassesList().stream().filter(c -> c.isAnnotationPresent(Command.class)).toList()) {
             try {
+                if(classes.contains(clazz)) continue;
                 Object instance = clazz.getDeclaredConstructor().newInstance();
-                register(instance);
-                count++;
+                if(register(instance)) count++;
+                classes.add(clazz);
             } catch (Exception e) {
                 Logger.log("Error during registration of " + clazz.getSimpleName(), LogType.ERROR);
                 e.printStackTrace();
@@ -150,18 +152,107 @@ public class CommandManager {
         defaultCommandMethods.clear();
     }
 
+    public List<String> getHelpMessage(CommandSender sender, boolean onlyMainCommands) {
+        List<String> helpMessages = new ArrayList<>();
+
+        for (Map.Entry<Object, Method> entry : defaultCommandMethods.entrySet()) {
+            Object commandInstance = entry.getKey();
+            Command command = commandInstance.getClass().getAnnotation(Command.class);
+            if (command == null) continue;
+            if (!command.permission().isEmpty() && !sender.hasPermission(command.permission())) continue;
+
+            helpMessages.addAll(messageProvider.formatMainCommandHelp(
+                    sender,
+                    command.name(),
+                    command.description(),
+                    command.permission(),
+                    command.aliases()
+            ));
+
+            if(!onlyMainCommands) {
+                Set<RegisteredSubCommand> uniqueSubCommands = new HashSet<>();
+
+                for (Map.Entry<String, RegisteredSubCommand> subEntry : subCommands.entrySet()) {
+                    RegisteredSubCommand sub = subEntry.getValue();
+                    if (sub.method.getDeclaringClass() != commandInstance.getClass()) continue;
+                    if (!uniqueSubCommands.add(sub)) continue;
+                    if (!sub.permission.isEmpty() && !sender.hasPermission(sub.permission)) continue;
+                    if (!sub.allowConsole && !(sender instanceof Player)) continue;
+
+                    helpMessages.addAll(messageProvider.formatSubCommandHelp(
+                            sender,
+                            command.name(),
+                            subEntry.getKey(),
+                            sub.usage,
+                            sub.description,
+                            sub.permission,
+                            sub.aliases
+                    ));
+                }
+            }
+        }
+
+        return helpMessages;
+    }
+
+    public List<String> getHelpMessageForCommand(String commandName, CommandSender sender, boolean includeMainCommand) {
+        List<String> helpMessages = new ArrayList<>();
+
+        for (Map.Entry<Object, Method> entry : defaultCommandMethods.entrySet()) {
+            Object commandInstance = entry.getKey();
+            Command command = commandInstance.getClass().getAnnotation(Command.class);
+            if (command == null) continue;
+            if (!command.name().equalsIgnoreCase(commandName) && Arrays.stream(command.aliases()).noneMatch(alias -> alias.equalsIgnoreCase(commandName))) continue;
+            if (!command.permission().isEmpty() && !sender.hasPermission(command.permission())) continue;
+            if(includeMainCommand) {
+                helpMessages.addAll(messageProvider.formatMainCommandHelp(
+                        sender,
+                        command.name(),
+                        command.description(),
+                        command.permission(),
+                        command.aliases()
+                ));
+            }
+
+            Set<Method> seen = new HashSet<>();
+            for (Map.Entry<String, RegisteredSubCommand> subEntry : subCommands.entrySet()) {
+                RegisteredSubCommand sub = subEntry.getValue();
+                if (sub.method.getDeclaringClass() != commandInstance.getClass()) continue;
+                if (!seen.add(sub.method)) continue;
+                if (!sub.permission.isEmpty() && !sender.hasPermission(sub.permission)) continue;
+                if (!sub.allowConsole && !(sender instanceof Player)) continue;
+
+                helpMessages.addAll(messageProvider.formatSubCommandHelp(
+                        sender,
+                        commandName,
+                        subEntry.getKey(),
+                        sub.usage,
+                        sub.description,
+                        sub.permission,
+                        sub.aliases
+                ));
+            }
+            break;
+        }
+
+        return helpMessages;
+    }
+
     private static class RegisteredSubCommand {
         Method method;
+        String usage;
         String permission;
         String description;
+        String[] aliases;
         boolean allowConsole;
 
-        public RegisteredSubCommand(Method method, String permission, String description, boolean allowConsole) {
+        public RegisteredSubCommand(Method method, String usage, String permission, String description, String[] aliases, boolean allowConsole) {
             this.method = method;
+            this.usage = usage;
             this.permission = permission;
             this.description = description;
+            this.aliases = aliases;
             this.allowConsole = allowConsole;
         }
     }
 }
-
