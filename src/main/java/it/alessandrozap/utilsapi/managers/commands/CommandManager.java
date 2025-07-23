@@ -4,7 +4,9 @@ import it.alessandrozap.utilsapi.UtilsAPI;
 import it.alessandrozap.utilsapi.annotations.commands.Command;
 import it.alessandrozap.utilsapi.annotations.commands.MainCommand;
 import it.alessandrozap.utilsapi.annotations.commands.SubCommand;
-import it.alessandrozap.utilsapi.defaults.DefaultMessageProvider;
+import it.alessandrozap.utilsapi.defaults.DefaultMessageProviderEn;
+import it.alessandrozap.utilsapi.defaults.DefaultMessageProviderIt;
+import it.alessandrozap.utilsapi.defaults.DefaultMessageProviderLanguage;
 import it.alessandrozap.utilsapi.interfaces.IMessageProvider;
 import it.alessandrozap.utilsapi.logger.LogType;
 import it.alessandrozap.utilsapi.logger.Logger;
@@ -25,7 +27,9 @@ public class CommandManager {
     private final JavaPlugin plugin = UtilsAPI.getInstance().getPlugin();
     private final Map<String, RegisteredSubCommand> subCommands = new HashMap<>();
     @Getter @Setter
-    private IMessageProvider messageProvider = new DefaultMessageProvider();
+    private IMessageProvider messageProvider = new DefaultMessageProviderIt();
+    @Getter @Setter
+    private boolean sendPrefix = false;
 
     public boolean register(Object commandInstance) {
         Class<?> clazz = commandInstance.getClass();
@@ -37,7 +41,7 @@ public class CommandManager {
 
         CommandImpl command = new CommandImpl(cmdInfo.name(), (sender, args) -> {
             if (!cmdInfo.permission().isEmpty() && !sender.hasPermission(cmdInfo.permission())) {
-                messageProvider.sendNoPermission(sender);
+                messageProvider.sendNoPermission(sender, sendPrefix);
                 return false;
             }
 
@@ -51,12 +55,12 @@ public class CommandManager {
                         }
                         MainCommand mainCommand = defaultMethod.getAnnotation(MainCommand.class);
                         if (mainCommand != null && !mainCommand.allowConsole() && !(sender instanceof Player)) {
-                            messageProvider.sendPlayerOnly(sender);
+                            messageProvider.sendPlayerOnly(sender, sendPrefix);
                             return false;
                         }
                         defaultMethod.invoke(commandInstance, sender);
                     } catch (Exception e) {
-                        messageProvider.sendUsage(sender, Locale.translate(Utility.toSmallCaps(cmdInfo.usage())));
+                        messageProvider.sendUsage(sender, sendPrefix, Locale.translate(Utility.toSmallCaps(cmdInfo.usage())));
                         e.printStackTrace();
                     }
                     return false;
@@ -66,17 +70,17 @@ public class CommandManager {
 
             RegisteredSubCommand sub = subCommands.get(args[0].toLowerCase());
             if (sub == null) {
-                messageProvider.sendSubCommandNotFound(sender, args[0]);
+                messageProvider.sendSubCommandNotFound(sender, sendPrefix, args[0]);
                 return false;
             }
 
             if (!sub.allowConsole && !(sender instanceof Player)) {
-                messageProvider.sendPlayerOnly(sender);
+                messageProvider.sendPlayerOnly(sender, sendPrefix);
                 return false;
             }
 
             if (!sub.permission.isEmpty() && !sender.hasPermission(sub.permission)) {
-                messageProvider.sendNoPermission(sender);
+                messageProvider.sendNoPermission(sender, sendPrefix);
                 return false;
             }
 
@@ -89,7 +93,7 @@ public class CommandManager {
                 }
                 sub.method.invoke(commandInstance, sender, Arrays.copyOfRange(args, 1, args.length));
             } catch (Exception e) {
-                messageProvider.sendExecutionError(sender, e);
+                messageProvider.sendExecutionError(sender, sendPrefix, e);
             }
 
             return false;
