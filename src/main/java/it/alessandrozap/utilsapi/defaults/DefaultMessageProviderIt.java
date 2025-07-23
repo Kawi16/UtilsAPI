@@ -65,7 +65,7 @@ public class DefaultMessageProviderIt implements IMessageProvider {
     }
 
     private String getMessage(String message, boolean prefix) {
-        return (prefix ? Locale.PREFIX.getMessage(false) : "") + Locale.translate(message);
+        return ((prefix ? Locale.PREFIX.getMessage(false) : "") + Locale.translate(message));
     }
 
 }
