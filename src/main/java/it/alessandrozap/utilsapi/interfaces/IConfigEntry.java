@@ -5,7 +5,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.util.List;
 
-public interface IConfigEnum {
+public interface IConfigEntry {
 
     String getPath();
     Object getDefaultValue();
