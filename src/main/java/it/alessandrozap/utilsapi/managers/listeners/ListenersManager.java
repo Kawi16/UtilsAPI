@@ -5,6 +5,7 @@ import it.alessandrozap.utilsapi.logger.LogType;
 import it.alessandrozap.utilsapi.logger.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.event.HandlerList;
+import org.bukkit.plugin.Plugin;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -44,10 +45,11 @@ public class ListenersManager {
         if (listener.load()) {
             boolean allDependenciesLoaded = true;
             for(int i = 0; i < listener.dependencies().length && allDependenciesLoaded; i++) {
-                if(Bukkit.getPluginManager().getPlugin(listener.dependencies()[i]) == null) allDependenciesLoaded = false;
+                Plugin plugin = Bukkit.getPluginManager().getPlugin(listener.dependencies()[i]);
+                if(plugin == null || !plugin.isEnabled()) allDependenciesLoaded = false;
             }
-            getServer().getPluginManager().registerEvents(listener, UtilsAPI.getInstance().getPlugin());
-            return true;
+            if(allDependenciesLoaded) getServer().getPluginManager().registerEvents(listener, UtilsAPI.getInstance().getPlugin());
+            return allDependenciesLoaded;
         }
         return false;
     }
