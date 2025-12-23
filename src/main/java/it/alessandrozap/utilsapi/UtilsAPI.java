@@ -55,7 +55,7 @@ public class UtilsAPI {
                 if(name.startsWith(path) && name.endsWith(".class")) {
                     String className = name.replace("/", ".").replace(".class", "");
                     try {
-                        Class<?> clazz = Class.forName(className, true, plugin.getClass().getClassLoader());
+                        Class<?> clazz = Class.forName(className, false, plugin.getClass().getClassLoader());
                         packageClassesList.add(clazz);
                     } catch(Exception ignored) {}
                 }
