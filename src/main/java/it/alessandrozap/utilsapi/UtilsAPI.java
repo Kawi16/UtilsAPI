@@ -1,5 +1,6 @@
 package it.alessandrozap.utilsapi;
 
+import it.alessandrozap.utilsapi.logger.Logger;
 import it.alessandrozap.utilsapi.managers.commands.CommandManager;
 import it.alessandrozap.utilsapi.managers.listeners.ListenersManager;
 import lombok.Getter;
@@ -37,6 +38,7 @@ public class UtilsAPI {
         this.plugin = plugin;
         this.prefix = prefix;
 
+        Logger.setConsolePrefix(prefix);
         UtilsAPI.instance = this;
         init();
     }
