@@ -6,13 +6,15 @@ import it.alessandrozap.utilsapi.managers.listeners.ListenersManager;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.reflections.Reflections;
+import org.reflections.scanners.Scanners;
+import org.reflections.util.ClasspathHelper;
+import org.reflections.util.ConfigurationBuilder;
 
-import java.io.File;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.List;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
+import java.util.Set;
 
 public class UtilsAPI {
 
@@ -29,12 +31,10 @@ public class UtilsAPI {
     @Getter
     private boolean initialized = false;
     @Getter
-    private List<Class> packageClassesList = new ArrayList<>();
-    @Getter
-    private List<File> resourceList = new ArrayList<>();
+    private List<Class<?>> packageClassesList = new ArrayList<>();
 
     public UtilsAPI(JavaPlugin plugin, String prefix) throws Exception {
-        if(plugin == null) throw new Exception();
+        if (plugin == null) throw new Exception("Plugin cannot be null!");
         this.plugin = plugin;
         this.prefix = prefix;
 
@@ -44,24 +44,24 @@ public class UtilsAPI {
     }
 
     public void init() {
-        /*
-            I use this for not cycle 2 times (1 time for listeners and 1 time for commands)
-         */
-        String path = plugin.getClass().getPackage().getName().replace(".", "/") + "/";
         try {
-            JarFile jar = new JarFile(new File(getClass().getProtectionDomain().getCodeSource().getLocation().toURI()));
-            Enumeration<JarEntry> entries = jar.entries();
-            while(entries.hasMoreElements()) {
-                JarEntry entry = entries.nextElement();
-                String name = entry.getName();
-                if(name.startsWith(path) && name.endsWith(".class")) {
-                    String className = name.replace("/", ".").replace(".class", "");
-                    try {
-                        Class<?> clazz = Class.forName(className, false, plugin.getClass().getClassLoader());
-                        packageClassesList.add(clazz);
-                    } catch(Exception ignored) {}
-                }
+            String basePackage = plugin.getClass().getPackageName();
+            ClassLoader pluginClassLoader = plugin.getClass().getClassLoader();
+
+            Reflections reflections = new Reflections(new ConfigurationBuilder()
+                    .setUrls(ClasspathHelper.forPackage(basePackage, pluginClassLoader))
+                    .addClassLoaders(pluginClassLoader)
+                    .setScanners(Scanners.SubTypes.filterResultsBy(s -> true))
+            );
+
+            Set<String> allClassNames = reflections.getAll(Scanners.SubTypes);
+            for (String className : allClassNames) {
+                try {
+                    Class<?> clazz = Class.forName(className, false, pluginClassLoader);
+                    if (!clazz.isInterface() && !Modifier.isAbstract(clazz.getModifiers())) packageClassesList.add(clazz);
+                } catch (ClassNotFoundException | NoClassDefFoundError ignored) {}
             }
+
             listenersManager = new ListenersManager();
             commandManager = new CommandManager();
             this.initialized = true;
@@ -71,13 +71,11 @@ public class UtilsAPI {
     }
 
     public void shutdown() {
-        if(listenersManager != null) listenersManager.unregisterAll();
+        if (listenersManager != null) listenersManager.unregisterAll();
         Bukkit.getScheduler().cancelTasks(plugin);
-        if(commandManager != null) commandManager.reset();
+        if (commandManager != null) commandManager.reset();
         packageClassesList.clear();
-        resourceList.clear();
         UtilsAPI.instance = null;
         initialized = false;
     }
-
 }

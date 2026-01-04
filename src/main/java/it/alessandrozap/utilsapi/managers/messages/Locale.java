@@ -196,7 +196,7 @@ public final class Locale {
         return MiniMessage.miniMessage().deserialize(buffer.toString());
     }
 
-    private static String translateLegacy(String message) {
+    public static String translateLegacy(String message) {
         final char COLOR_CHAR = ChatColor.COLOR_CHAR;
         final Pattern hexPattern = Pattern.compile("&#([A-Fa-f0-9]{6})");
         Matcher matcher = hexPattern.matcher(message);
