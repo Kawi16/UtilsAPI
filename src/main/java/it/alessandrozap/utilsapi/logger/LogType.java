@@ -6,7 +6,7 @@ import org.bukkit.ChatColor;
 
 @RequiredArgsConstructor
 public enum LogType {
-    ERROR(ChatColor.RED), WARN(ChatColor.YELLOW), INFO(ChatColor.WHITE), START(ChatColor.DARK_RED);
+    DEBUG(ChatColor.GRAY), ERROR(ChatColor.RED), WARN(ChatColor.YELLOW), INFO(ChatColor.WHITE), START(ChatColor.DARK_RED);
 
     @Getter
     private final ChatColor color;
