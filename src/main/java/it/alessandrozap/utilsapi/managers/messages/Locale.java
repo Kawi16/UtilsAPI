@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
@@ -23,8 +24,12 @@ public final class Locale {
     private static FileManager messagesFile = null;
     private static boolean errorSent = false;
     private static final String BASE_PATH = "messages.";
+
     @Getter @Setter
     private static boolean useMiniMessage = false;
+    @Getter private static List<TagResolver> DEFAULT_RESOLVERS = new ArrayList<>();
+    private static HashMap<Enum<?>, MiniMessage> miniMessageResolvers = new HashMap<>();
+    @Getter private static MiniMessage miniMessageDefault = MiniMessage.builder().tags(TagResolver.empty()).build();
 
     public static Locale PREFIX;
 
@@ -194,6 +199,41 @@ public final class Locale {
         }
         matcher.appendTail(buffer);
         return MiniMessage.miniMessage().deserialize(buffer.toString());
+    }
+
+    public static <E extends Enum<E>> void createBuilder(E id, List<TagResolver> resolvers) {
+        if (resolvers == null) resolvers = DEFAULT_RESOLVERS;
+        MiniMessage miniMessage = MiniMessage.builder().tags(TagResolver.builder().resolvers(resolvers).build()).build();
+        miniMessageResolvers.put(id, miniMessage);
+    }
+
+    public static <E extends Enum<E>> MiniMessage getBuilder(E id) {
+        return miniMessageResolvers.getOrDefault(id, miniMessageDefault);
+    }
+
+    public static <E extends Enum<E>> void setDefaultBuilder(E id) {
+        miniMessageDefault = miniMessageResolvers.getOrDefault(id, miniMessageDefault);
+    }
+
+    public static Component translateToComponentSanitized(Enum<?> resolverId, String message) {
+        String converted = message.replaceAll("&#([A-Fa-f0-9]{6})", "<#$1>");
+        Pattern legacyPattern = Pattern.compile("&([a-f0-9k-orA-FK-OR])");
+        Matcher matcher = legacyPattern.matcher(converted);
+        StringBuffer buffer = new StringBuffer();
+
+        while (matcher.find()) {
+            String group = matcher.group(1).toLowerCase();
+            String replacement = getMiniMessageTag(group.charAt(0));
+            matcher.appendReplacement(buffer, replacement);
+        }
+        matcher.appendTail(buffer);
+
+        MiniMessage miniMessage = miniMessageResolvers.getOrDefault(resolverId, miniMessageDefault);
+        return miniMessage.deserialize(buffer.toString());
+    }
+
+    public static Component translateToComponentSanitized(String message) {
+        return translateToComponentSanitized(null, message);
     }
 
     public static String translateLegacy(String message) {
