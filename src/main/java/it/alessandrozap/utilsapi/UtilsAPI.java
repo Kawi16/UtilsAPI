@@ -72,7 +72,8 @@ public class UtilsAPI {
 
     public void shutdown() {
         if (listenersManager != null) listenersManager.unregisterAll();
-        Bukkit.getScheduler().cancelTasks(plugin);
+        Bukkit.getGlobalRegionScheduler().cancelTasks(plugin);
+        Bukkit.getAsyncScheduler().cancelTasks(plugin);
         if (commandManager != null) commandManager.reset();
         packageClassesList.clear();
         UtilsAPI.instance = null;
