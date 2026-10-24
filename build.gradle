@@ -87,6 +87,15 @@ publishing {
             artifact sourcesJar
         }
     }
+
+    repositories {
+        maven {
+            name = "alessandrozap"
+            def isSnapshot = publishing.publications.maven.version.endsWith('SNAPSHOT')
+            url = isSnapshot ? "https://repo.alessandrozap.it/snapshots" : "https://repo.alessandrozap.it/releases"
+            credentials(PasswordCredentials)
+        }
+    }
 }
 
 tasks.named("publishMavenPublicationToMavenLocal") {
