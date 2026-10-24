@@ -1,5 +1,6 @@
 package it.alessandrozap.utilsapi;
 
+import it.alessandrozap.utilsapi.adapters.VersionAdapter;
 import it.alessandrozap.utilsapi.logger.Logger;
 import it.alessandrozap.utilsapi.managers.commands.CommandManager;
 import it.alessandrozap.utilsapi.managers.listeners.ListenersManager;
@@ -17,7 +18,6 @@ import java.util.List;
 import java.util.Set;
 
 public class UtilsAPI {
-
     @Getter
     private static UtilsAPI instance;
     @Getter
@@ -68,6 +68,10 @@ public class UtilsAPI {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public VersionAdapter getVersionAdapter() {
+        return VersionAdapter.get();
     }
 
     public void shutdown() {
