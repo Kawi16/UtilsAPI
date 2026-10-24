@@ -79,7 +79,7 @@ tasks {
 publishing {
     publications {
         maven(MavenPublication) {
-            groupId = 'it.alessandrozap.api'
+            groupId = 'it.alessandrozap.utilsapi'
             artifactId = 'UtilsAPI'
             version = project.version
 
